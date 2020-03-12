@@ -33,7 +33,7 @@ The following variables can be customized with *M-x customize-variable*:
 
 ## Keybindings
 
-You can rotate the preview image with following keys :
+You can rotate the preview image with the following keys :
 
 - *<right>*, *l*     : rotate+ around z-axis
 - *<left>*, *h*      : rotate- around z-axis
