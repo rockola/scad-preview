@@ -1,6 +1,6 @@
 ;;; scad-preview.el --- Preview SCAD models in real-time within Emacs
 
-;; Copyright (C) 2013-2015 zk_phi
+;; Copyright (C) 2013-2015 zk_phi & Ola Rinta-Koski
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@
 ;; Author: zk_phi
 ;; URL: http://hins11.yu-yake.com/
 ;; Package-Requires: ((scad-mode "91.0"))
-;; Version: 0.1.1
+;; Version: 0.1.2
 
 ;;; Commentary:
 
@@ -79,8 +79,13 @@
   :group 'scad-preview)
 
 (defcustom scad-preview-window-position 'right
-  "Position of the preview window. The value can be either 'right,
-  'left, 'below, or 'above."
+  "Position of the preview window.
+
+If the value is one of 'right, 'left, 'below, or 'above, the
+preview window is split from the current window in the current
+frame.
+
+If the value is 'frame, the preview window is created in a new frame."
   :group 'scad-preview)
 
 (defcustom scad-preview-window-size 65
@@ -101,6 +106,7 @@
 (defvar scad-preview--modified-flag     nil)
 (defvar scad-preview--scad-process      nil)
 (defvar scad-preview--scad-status       nil)
+(defvar scad-preview--buffer-name "*SCAD Preview*")
 
 (defun scad-preview--after-change-function (&rest _)
   "Mark that the buffer is modified."
@@ -120,11 +126,16 @@ preview buffer."
     (setcar cell (+ (car cell) val))
     (scad-preview-refresh)))
 
+(defun scad-preview--start-window-actions ()
+  (switch-to-buffer scad-preview--buffer)
+  (scad-preview--image-mode)
+  (add-hook 'kill-buffer-hook 'scad-preview--end nil t))
+
 (defun scad-preview--start ()
   "Turn `scad-preview-mode' on."
   (unless scad-preview-mode
     (setq scad-preview-mode           t
-          scad-preview--buffer        (get-buffer-create "*SCAD Preview*")
+          scad-preview--buffer        (get-buffer-create scad-preview--buffer-name)
           scad-preview--source-buffer (current-buffer)
           scad-preview--scad-status   "Ready"
           scad-preview--timer-object
@@ -134,12 +145,15 @@ preview buffer."
              (when scad-preview--modified-flag
                (setq scad-preview--modified-flag nil)
                (scad-preview-refresh)))))
-    (with-selected-window (split-window (selected-window)
-                                        (- scad-preview-window-size)
-                                        scad-preview-window-position)
-      (switch-to-buffer scad-preview--buffer)
-      (scad-preview--image-mode)
-      (add-hook 'kill-buffer-hook 'scad-preview--end nil t))
+    (cond ((eql scad-preview-window-position 'frame)
+	   (with-selected-frame (make-frame (list (cons 'name scad-preview--buffer-name)
+						  (cons 'width scad-preview-window-size)))
+	     (scad-preview--start-window-actions)))
+	  (t
+	   (with-selected-window (split-window (selected-window)
+					       (- scad-preview-window-size)
+					       scad-preview-window-position)
+	     (scad-preview--start-window-actions))))
     (add-hook 'kill-buffer-hook 'scad-preview--end nil t)
     (add-hook 'after-change-functions 'scad-preview--after-change-function t)
     (scad-preview-reset-camera-parameters)))
